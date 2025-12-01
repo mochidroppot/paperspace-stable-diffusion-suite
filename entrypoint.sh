@@ -26,7 +26,30 @@ update_comfyui() {
   echo "Updating ComfyUI in ${COMFYUI_APP_BASE} ..."
   (
     cd "${COMFYUI_APP_BASE}"
-    git pull --ff-only origin master
+    
+    # Get latest release tag from GitHub API
+    remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+    if [[ "$remote_url" =~ github\.com[:/]([^/]+)/([^/]+)\.git? ]]; then
+      owner="${BASH_REMATCH[1]}"
+      repo="${BASH_REMATCH[2]%.git}"
+      
+      # Try to get latest release tag from GitHub API
+      latest_tag=$(curl -sL "https://api.github.com/repos/${owner}/${repo}/releases/latest" 2>/dev/null | grep -oP '"tag_name":\s*"\K[^"]+' | head -1)
+      
+      if [ -n "$latest_tag" ]; then
+        echo "  → Checking out latest release: $latest_tag"
+        git fetch --tags origin 2>/dev/null || true
+        git checkout "$latest_tag" 2>/dev/null || git checkout -b "release-${latest_tag}" "$latest_tag" 2>/dev/null || true
+      else
+        # Fallback to branch update if no release found
+        echo "  → No release found, updating from branch..."
+        git pull --ff-only origin master 2>/dev/null || git pull --ff-only origin main 2>/dev/null || true
+      fi
+    else
+      # Fallback for non-GitHub repositories
+      git pull --ff-only origin master 2>/dev/null || git pull --ff-only origin main 2>/dev/null || true
+    fi
+    
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install -r /opt/app/ComfyUI/requirements.txt
   )
 }
