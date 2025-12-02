@@ -87,7 +87,7 @@ RUN set -eux; \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install --index-url https://download.pytorch.org/whl/cu124 torch torchvision torchaudio && \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install --prefer-binary --upgrade-strategy only-if-needed \
       jupyterlab==4.* notebook ipywidgets jupyterlab-git jupyter-server-proxy tensorboard \
-      matplotlib seaborn pandas numpy scipy tqdm rich && \
+      matplotlib seaborn pandas numpy scipy tqdm rich supervisor && \
     if [ -f /opt/app/ComfyUI/requirements.txt ]; then \
       micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install -r /opt/app/ComfyUI/requirements.txt; \
     fi; \
@@ -99,26 +99,6 @@ RUN set -eux; \
     fi; \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv python -m pip install https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.0/nunchaku-1.0.0+torch2.6-cp311-cp311-linux_x86_64.whl; \
     micromamba clean -a -y
-
-# ------------------------------
-# Filebrowser
-# ------------------------------
-RUN set -eux; \
-    mkdir -p /tmp/fb && \
-    curl -fsSL -o /tmp/fb/linux-amd64-filebrowser.tar.gz "https://github.com/filebrowser/filebrowser/releases/latest/download/linux-amd64-filebrowser.tar.gz" && \
-    tar -xzf /tmp/fb/linux-amd64-filebrowser.tar.gz -C /tmp/fb && \
-    install -m 0755 /tmp/fb/filebrowser /usr/local/bin/filebrowser && \
-    rm -rf /tmp/fb
-
-# ------------------------------
-# studio
-# ------------------------------
-  RUN set -eux; \
-  mkdir -p /tmp/studio && \
-  curl -fsSL -o /tmp/studio/studio.zip "https://github.com/mochidroppot/paperspace-stable-diffusion-station/releases/latest/download/paperspace-stable-diffusion-station-linux-amd64.zip" && \
-  unzip /tmp/studio/studio.zip -d /tmp/studio && \
-  install -m 0755 /tmp/studio/studio/studio /usr/local/bin/studio && \
-  rm -rf /tmp/studio
 
 # ------------------------------
 # Non-root user for interactive sessions
@@ -158,7 +138,8 @@ USER root
 WORKDIR /notebooks
 
 # Copy entrypoint script
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY config/supervisord.conf /etc/supervisord.conf
 RUN chmod +x /usr/local/bin/entrypoint.sh && chown ${MAMBA_USER}:${MAMBA_USER} /usr/local/bin/entrypoint.sh
 # Install local jupyter-server-proxy entrypoints package
 COPY pyproject.toml /tmp/paperspace-stable-diffusion-suite/pyproject.toml

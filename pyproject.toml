@@ -11,9 +11,7 @@ dependencies = [
 
 [project.entry-points."jupyter_serverproxy_servers"]
 # 各サーバーを個別に設定 - これらの名前がランチャーに表示される
-studio = "paperspace_stable_diffusion_suite:get_studio_config"
 comfyui = "paperspace_stable_diffusion_suite:get_comfyui_config"
-filebrowser = "paperspace_stable_diffusion_suite:get_filebrowser_config"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
