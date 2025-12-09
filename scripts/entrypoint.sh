@@ -2,11 +2,34 @@
 set -euo pipefail
 
 MAMBA_ROOT_PREFIX=/opt/conda
-NOTEBOOKS_WORKSPACE_BASE="/notebooks/workspace"
+NOTEBOOKS_BASE_DIR="/notebooks"
+NOTEBOOKS_COMFYUI_DIR="${NOTEBOOKS_BASE_DIR}/comfyui"
+NOTEBOOKS_JLAB_DIR="${NOTEBOOKS_BASE_DIR}/jlab"
+JLAB_EXTENSIONS_DIR="${NOTEBOOKS_JLAB_DIR}/extensions"
 STORAGE_SYSTEM_BASE="/storage/system"
-COMFYUI_SYSTEM_BASE="${STORAGE_SYSTEM_BASE}/comfyui"
 COMFYUI_APP_BASE="/opt/app/ComfyUI"
-mkdir -p "${NOTEBOOKS_WORKSPACE_BASE}/input" "${NOTEBOOKS_WORKSPACE_BASE}/output" "${NOTEBOOKS_WORKSPACE_BASE}/custom_nodes" "${NOTEBOOKS_WORKSPACE_BASE}/user"
+
+# Create directories
+mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/input"
+mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/output"
+mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/custom_nodes"
+mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/user"
+mkdir -p "${JLAB_EXTENSIONS_DIR}"
+
+# Install JupyterLab extensions
+install_jlab_extensions() {
+  shopt -s nullglob
+  local extensions=("$JLAB_EXTENSIONS_DIR"/*.whl)
+  if [ ${#extensions[@]} -gt 0 ]; then
+    echo "Installing JupyterLab extensions: ${extensions[@]}"
+    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install --no-cache-dir "${extensions[@]}"
+  else
+    echo "No JupyterLab extensions found in ${JLAB_EXTENSIONS_DIR}"
+  fi
+  shopt -u nullglob
+}
+
+install_jlab_extensions
 
 # Optionally update ComfyUI repo to the latest on container start
 # Set COMFYUI_AUTO_UPDATE=0 to disable
@@ -69,7 +92,7 @@ update_preinstalled_nodes() {
   )
   
   for node in "${nodes[@]}"; do
-    local node_path="${NOTEBOOKS_WORKSPACE_BASE}/custom_nodes/${node}"
+    local node_path="${NOTEBOOKS_COMFYUI_DIR}/custom_nodes/${node}"
     if [ -d "$node_path/.git" ]; then
       echo "Updating pre-installed custom node: $node ..."
       (
@@ -128,10 +151,10 @@ link_dir() {
   ln -sfn "$dst" "$src"
 }
 
-link_dir "${COMFYUI_APP_BASE}/input" "${NOTEBOOKS_WORKSPACE_BASE}/input"
-link_dir "${COMFYUI_APP_BASE}/output" "${NOTEBOOKS_WORKSPACE_BASE}/output"
-link_dir "${COMFYUI_APP_BASE}/custom_nodes" "${NOTEBOOKS_WORKSPACE_BASE}/custom_nodes"
-link_dir "${COMFYUI_APP_BASE}/user" "${NOTEBOOKS_WORKSPACE_BASE}/user"
+link_dir "${COMFYUI_APP_BASE}/input" "${NOTEBOOKS_COMFYUI_DIR}/input"
+link_dir "${COMFYUI_APP_BASE}/output" "${NOTEBOOKS_COMFYUI_DIR}/output"
+link_dir "${COMFYUI_APP_BASE}/custom_nodes" "${NOTEBOOKS_COMFYUI_DIR}/custom_nodes"
+link_dir "${COMFYUI_APP_BASE}/user" "${NOTEBOOKS_COMFYUI_DIR}/user"
 
 # Update pre-installed custom nodes after linking
 update_preinstalled_nodes

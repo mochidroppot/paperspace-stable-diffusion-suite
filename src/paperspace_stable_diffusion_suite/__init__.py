@@ -18,7 +18,7 @@ def get_servers():
         "comfyui": {
             "timeout": 30,
             "new_browser_tab": True,
-            "absolute_url": True,
+            "absolute_url": False,
             "port": _port_from_env("COMFYUI_PORT", 8189),
             "launcher_entry": {
                 "title": "ComfyUI",
