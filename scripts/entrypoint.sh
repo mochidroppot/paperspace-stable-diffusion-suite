@@ -31,6 +31,18 @@ install_jlab_extensions() {
 
 install_jlab_extensions
 
+# ----
+# Diagnostics: print versions and extension status (helps debug "launcherに出ない")
+# ----
+echo "=== Jupyter diagnostics (pyenv) ==="
+micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv python -V || true
+micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter lab --version || true
+echo "--- jupyter server extension list ---"
+micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter server extension list 2>&1 || true
+echo "--- jupyter labextension list ---"
+micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter labextension list 2>&1 || true
+echo "=== end diagnostics ==="
+
 # Optionally update ComfyUI repo to the latest on container start
 # Set COMFYUI_AUTO_UPDATE=0 to disable
 update_comfyui() {
@@ -164,8 +176,10 @@ echo "Starting Supervisor (ComfyUI)..."
 supervisord -c /etc/supervisord.conf
 
 if [ "$#" -gt 0 ]; then
-  exec "$@"
+  # Always run user command inside the managed env so installed extensions match the running Jupyter.
+  exec micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv "$@"
 else
-  exec jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token= --ServerApp.password=
+  exec micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv \
+    jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token= --ServerApp.password=
 fi
 

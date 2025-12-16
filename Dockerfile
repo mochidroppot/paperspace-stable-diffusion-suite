@@ -93,6 +93,10 @@ RUN set -eux; \
       matplotlib seaborn pandas numpy scipy tqdm rich supervisor && \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install "${JUPYTERLAB_COMFYUI_COCKPIT_URL}" && \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv python -c "import jupyterlab_comfyui_cockpit" && \
+    # Sanity check: ensure Jupyter sees the installed extensions in this env
+    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter lab --version && \
+    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter server extension list && \
+    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter labextension list && \
     if [ -f /opt/app/ComfyUI/requirements.txt ]; then \
       micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install -r /opt/app/ComfyUI/requirements.txt; \
     fi; \
