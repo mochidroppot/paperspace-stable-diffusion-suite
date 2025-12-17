@@ -100,6 +100,10 @@ RUN set -eux; \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv python -m pip install https://github.com/nunchaku-tech/nunchaku/releases/download/v1.0.0/nunchaku-1.0.0+torch2.6-cp311-cp311-linux_x86_64.whl; \
     micromamba clean -a -y
 
+# Install extensions (jupyterlab-comfyui-cockpit)
+RUN set -eux; \
+    curl -fsSL -o /opt/jlab_extensions/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl https://github.com/mochidroppot/jupyterlab-comfyui-cockpit/releases/download/v0.1.0/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl
+
 # ------------------------------
 # Non-root user for interactive sessions
 # ------------------------------
@@ -141,13 +145,10 @@ WORKDIR /notebooks
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY config/supervisord.conf /etc/supervisord.conf
 RUN chmod +x /usr/local/bin/entrypoint.sh && chown ${MAMBA_USER}:${MAMBA_USER} /usr/local/bin/entrypoint.sh
-# Install extensions
+# Install extensions (jupyterlab-comfyui-cockpit)
 COPY pyproject.toml /tmp/paperspace-stable-diffusion-suite/pyproject.toml
 COPY src /tmp/paperspace-stable-diffusion-suite/src
-RUN curl -fsSL -o /tmp/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl https://github.com/mochidroppot/jupyterlab-comfyui-cockpit/releases/download/v0.1.0/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl && \
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /tmp/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl && \
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /tmp/paperspace-stable-diffusion-suite && \
-    rm -rf /tmp/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl && \
+RUN micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /tmp/paperspace-stable-diffusion-suite && \
     rm -rf /tmp/paperspace-stable-diffusion-suite
 
 # Expose Jupyter port.
