@@ -18,7 +18,7 @@ mkdir -p "${JLAB_EXTENSIONS_DIR}"
 
 # Install JupyterLab extensions
 install_jlab_extensions() {
-  micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /opt/jlab_extensions/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl
+  micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /opt/app/jlab_extensions/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl
 
   shopt -s nullglob
   local extensions=("$JLAB_EXTENSIONS_DIR"/*.whl)
