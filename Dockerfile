@@ -112,7 +112,8 @@ RUN set -eux; \
     useradd -m -s /bin/bash ${MAMBA_USER}; \
     chown -R ${MAMBA_USER}:${MAMBA_USER} /home/${MAMBA_USER}; \
     chown -R ${MAMBA_USER}:${MAMBA_USER} ${MAMBA_ROOT_PREFIX}; \
-    chown -R ${MAMBA_USER}:${MAMBA_USER} /opt/app
+    chown -R ${MAMBA_USER}:${MAMBA_USER} /opt/app; \
+    chown -R ${MAMBA_USER}:${MAMBA_USER} /opt/jlab_extensions
 
 # Configure git for the mambauser
 USER ${MAMBA_USER}
