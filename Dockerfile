@@ -102,6 +102,7 @@ RUN set -eux; \
 
 # Install extensions (jupyterlab-comfyui-cockpit)
 RUN set -eux; \
+    mkdir -p /opt/jlab_extensions && \
     curl -fsSL -o /opt/jlab_extensions/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl https://github.com/mochidroppot/jupyterlab-comfyui-cockpit/releases/download/v0.1.0/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl
 
 # ------------------------------
