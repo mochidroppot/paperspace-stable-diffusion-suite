@@ -13,9 +13,6 @@ LABEL maintainer="mochidroppot <mochidroppot@gmail.com>"
 # ------------------------------
 ARG PYTHON_VERSION=3.11
 ARG MAMBA_USER=mambauser
-ARG JUPYTERLAB_COMFYUI_COCKPIT_VERSION=0.1.0
-ARG JUPYTERLAB_COMFYUI_COCKPIT_WHL=jupyterlab_comfyui_cockpit-${JUPYTERLAB_COMFYUI_COCKPIT_VERSION}-py3-none-any.whl
-ARG JUPYTERLAB_COMFYUI_COCKPIT_URL=https://github.com/mochidroppot/jupyterlab-comfyui-cockpit/releases/download/v${JUPYTERLAB_COMFYUI_COCKPIT_VERSION}/${JUPYTERLAB_COMFYUI_COCKPIT_WHL}
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC \
     SHELL=/bin/bash \
@@ -91,12 +88,6 @@ RUN set -eux; \
     micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install --prefer-binary --upgrade-strategy only-if-needed \
       jupyterlab==4.* notebook ipywidgets jupyterlab-git jupyter-server-proxy tensorboard \
       matplotlib seaborn pandas numpy scipy tqdm rich supervisor && \
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install "${JUPYTERLAB_COMFYUI_COCKPIT_URL}" && \
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv python -c "import jupyterlab_comfyui_cockpit" && \
-    # Sanity check: ensure Jupyter sees the installed extensions in this env
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter lab --version && \
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter server extension list && \
-    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv jupyter labextension list && \
     if [ -f /opt/app/ComfyUI/requirements.txt ]; then \
       micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install -r /opt/app/ComfyUI/requirements.txt; \
     fi; \
@@ -150,10 +141,14 @@ WORKDIR /notebooks
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY config/supervisord.conf /etc/supervisord.conf
 RUN chmod +x /usr/local/bin/entrypoint.sh && chown ${MAMBA_USER}:${MAMBA_USER} /usr/local/bin/entrypoint.sh
-# Install local jupyter-server-proxy entrypoints package
+# Install extensions
 COPY pyproject.toml /tmp/paperspace-stable-diffusion-suite/pyproject.toml
 COPY src /tmp/paperspace-stable-diffusion-suite/src
-RUN micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /tmp/paperspace-stable-diffusion-suite && rm -rf /tmp/paperspace-stable-diffusion-suite
+RUN curl -fsSL -o /tmp/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl https://github.com/mochidroppot/jupyterlab-comfyui-cockpit/releases/download/v0.1.0/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl && \
+    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /tmp/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl && \
+    micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install /tmp/paperspace-stable-diffusion-suite && \
+    rm -rf /tmp/jupyterlab_comfyui_cockpit-0.1.0-py3-none-any.whl && \
+    rm -rf /tmp/paperspace-stable-diffusion-suite
 
 # Expose Jupyter port.
 EXPOSE 8888
