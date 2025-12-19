@@ -13,7 +13,8 @@ LABEL maintainer="mochidroppot <mochidroppot@gmail.com>"
 # ------------------------------
 ARG PYTHON_VERSION=3.11
 ARG MAMBA_USER=mambauser
-ENV DEBIAN_FRONTEND=noninteractive \
+ENV MAMBA_USER=${MAMBA_USER} \
+    DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC \
     SHELL=/bin/bash \
     PIP_NO_CACHE_DIR=1 \
@@ -123,7 +124,6 @@ USER root
 
 # Workspace directories for notebooks and data
 RUN mkdir -p /workspace /workspace/data /workspace/notebooks
-WORKDIR /workspace
 
 # Switch to non-root; set Python env in PATH
 USER ${MAMBA_USER}

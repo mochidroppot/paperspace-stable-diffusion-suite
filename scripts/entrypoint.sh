@@ -2,19 +2,20 @@
 set -euo pipefail
 
 MAMBA_ROOT_PREFIX=/opt/conda
-NOTEBOOKS_BASE_DIR="/notebooks"
-NOTEBOOKS_COMFYUI_DIR="${NOTEBOOKS_BASE_DIR}/comfyui"
-NOTEBOOKS_JLAB_DIR="${NOTEBOOKS_BASE_DIR}/jlab"
-JLAB_EXTENSIONS_DIR="${NOTEBOOKS_JLAB_DIR}/extensions"
-STORAGE_SYSTEM_BASE="/storage/system"
+STORAGE_BASE_DIR="/storage/sd-suite"
+STORAGE_COMFYUI_DIR="${STORAGE_BASE_DIR}/comfyui"
+STORAGE_JLAB_DIR="${STORAGE_BASE_DIR}/jlab"
+JLAB_EXTENSIONS_DIR="${STORAGE_JLAB_DIR}/extensions"
+STORAGE_SYSTEM_BASE="${STORAGE_BASE_DIR}/system"
 COMFYUI_APP_BASE="/opt/app/ComfyUI"
+COMFYUI_CUSTOM_NODES_DIR="${STORAGE_COMFYUI_DIR}/custom_nodes"
 
 # Create directories
-mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/input"
-mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/output"
-mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/custom_nodes"
-mkdir -p "${NOTEBOOKS_COMFYUI_DIR}/user"
-mkdir -p "${JLAB_EXTENSIONS_DIR}"
+mkdir -p "${STORAGE_COMFYUI_DIR}/input" \
+ "${STORAGE_COMFYUI_DIR}/output" \
+ "${STORAGE_COMFYUI_DIR}/custom_nodes" \
+ "${STORAGE_COMFYUI_DIR}/user" \
+ "${JLAB_EXTENSIONS_DIR}"
 
 # Install JupyterLab extensions
 install_jlab_extensions() {
@@ -106,49 +107,55 @@ update_preinstalled_nodes() {
   )
   
   for node in "${nodes[@]}"; do
-    local node_path="${NOTEBOOKS_COMFYUI_DIR}/custom_nodes/${node}"
+    local node_path="${COMFYUI_CUSTOM_NODES_DIR}/${node}"
     if [ -d "$node_path/.git" ]; then
       echo "Updating pre-installed custom node: $node ..."
       (
         cd "$node_path"
-        
-        # Marker file to track if dependencies were installed
-        local deps_marker=".deps_installed"
-        local is_first_run=false
-        if [ ! -f "$deps_marker" ]; then
-          is_first_run=true
-        fi
-        
-        # Hash requirements.txt before update (if exists)
-        local req_hash_before=""
-        if [ -f "requirements.txt" ]; then
-          req_hash_before=$(md5sum requirements.txt 2>/dev/null | cut -d' ' -f1)
-        fi
-        
+
         # Update the node
         git pull --ff-only origin master 2>/dev/null || git pull --ff-only origin main 2>/dev/null || true
-        
-        # Check if requirements.txt changed or is new
-        local needs_install=false
-        if [ -f "requirements.txt" ]; then
-          local req_hash_after=$(md5sum requirements.txt 2>/dev/null | cut -d' ' -f1)
-          if [ "$is_first_run" = true ]; then
-            needs_install=true
-            echo "  → First run, ensuring dependencies are installed..."
-          elif [ "$req_hash_before" != "$req_hash_after" ]; then
-            needs_install=true
-            echo "  → requirements.txt changed, installing dependencies..."
-          fi
-        fi
-        
-        # Install dependencies only if needed
-        if [ "$needs_install" = true ]; then
-          micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install --upgrade-strategy only-if-needed -r requirements.txt
-          touch "$deps_marker"
-        fi
       )
     fi
   done
+}
+
+install_custom_node_deps_every_start() {
+  # Paperspace environments may wipe the Python environment between starts.
+  # This installs (Fix相当) requirements for all persisted custom_nodes on every container start.
+  local auto="${COMFYUI_CUSTOM_NODES_AUTO_INSTALL_DEPS:-1}"
+  if [ "$auto" = "0" ] || [ "$auto" = "false" ]; then
+    echo "Skipping custom node deps install (COMFYUI_CUSTOM_NODES_AUTO_INSTALL_DEPS=$auto)"
+    return 0
+  fi
+
+  if [ ! -d "${COMFYUI_CUSTOM_NODES_DIR}" ]; then
+    return 0
+  fi
+
+  echo "Ensuring Python deps for custom nodes (every start) ..."
+  shopt -s nullglob
+  local reqs=("${COMFYUI_CUSTOM_NODES_DIR}"/*/requirements.txt)
+  if [ ${#reqs[@]} -eq 0 ]; then
+    echo "  → No requirements.txt found under ${COMFYUI_CUSTOM_NODES_DIR}"
+    shopt -u nullglob
+    return 0
+  fi
+
+  for req in "${reqs[@]}"; do
+    local node_dir; node_dir="$(dirname "$req")"
+    local node_name; node_name="$(basename "$node_dir")"
+    echo "  → Installing deps for: ${node_name}"
+    (
+      cd "$node_dir"
+      # Do not fail the whole container if one node has incompatible deps;
+      # user can still fix/disable that node from Manager.
+      micromamba run -p ${MAMBA_ROOT_PREFIX}/envs/pyenv pip install \
+        --upgrade-strategy only-if-needed \
+        -r "requirements.txt" || true
+    )
+  done
+  shopt -u nullglob
 }
 
 link_dir() {
@@ -165,13 +172,15 @@ link_dir() {
   ln -sfn "$dst" "$src"
 }
 
-link_dir "${COMFYUI_APP_BASE}/input" "${NOTEBOOKS_COMFYUI_DIR}/input"
-link_dir "${COMFYUI_APP_BASE}/output" "${NOTEBOOKS_COMFYUI_DIR}/output"
-link_dir "${COMFYUI_APP_BASE}/custom_nodes" "${NOTEBOOKS_COMFYUI_DIR}/custom_nodes"
-link_dir "${COMFYUI_APP_BASE}/user" "${NOTEBOOKS_COMFYUI_DIR}/user"
+for d in input output custom_nodes user; do
+  link_dir "${COMFYUI_APP_BASE}/${d}" "${STORAGE_COMFYUI_DIR}/${d}"
+done
 
 # Update pre-installed custom nodes after linking
 update_preinstalled_nodes
+
+# Install python deps for all custom nodes after linking
+install_custom_node_deps_every_start
 
 echo "Starting Supervisor (ComfyUI)..."
 # Start supervisord in daemon mode (configured in supervisord.conf)
